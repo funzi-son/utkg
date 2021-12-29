@@ -1,0 +1,8 @@
+
+from utkg.kbs.kg import GraphKB
+def run():
+    kb = GraphKB("../../../../data/footballdb/")
+    model = ...
+    model.run()
+if __name__=="__main__":
+    run()

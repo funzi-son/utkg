@@ -1,0 +1,9 @@
+"""
+Neural Tensor Net Predicate
+@SNT
+"""
+import numpy as np
+
+class NTN():
+   def __init__(self,var_classes,all_var_dims,name="ntn_pred"):
+       

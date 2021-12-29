@@ -1,0 +1,28 @@
+"""
+Neural-symbolic Uncertain Temporal Knowledge Graph
+@SNT
+"""
+
+from npredicates.reg_net_pred import NeuralRegPred
+
+class TN_UTKG(object):
+    def __init__(self,var_dims,kb,reasoner="lbm",npred_types=None):
+        self.reasoner = reasoner
+
+    def build_model(self):
+        # construct neural predicates
+        self.preds  = {}
+
+        print("Build model")
+
+        # construct formulas
+
+
+
+    def infer(self,session,bquery):
+        # find formulas
+        print(bquery)
+
+        # 
+        
+        

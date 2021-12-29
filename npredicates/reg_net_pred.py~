@@ -1,0 +1,101 @@
+"""
+Neural Net Probabilistic/Regression Predicate
+@SNT
+"""
+import numpy as np
+from chizson.npredicates.neural_predicate import NeuralPred
+
+class NeuralProbPred(NeuralPred):
+   """
+   Neural probabilistic/regression as a predicate. A neural net N present the truth value as a probablistic/regression function.
+   """
+   def __init__(self,var_classes,all_var_dims,name="neural_prob_pred"):
+      self.var_classes  = var_classes
+      self.all_var_dims = all_var_dims
+      self.mb_size      = FLAGS.bsize
+      self.name = name
+        
+      if FLAGS.optimizer=="adam":
+         self.optimizer = tf.train.AdamOptimizer
+      elif FLAGS.optimizer=="rmsprop":
+         self.optimizer = tf.train.RMSPropOptimizer
+
+      i = 0    
+      self.x = {}
+      self.y = {}
+      self.z = {}
+      self.losses = {}
+      self.ops = {}
+      self.dims= {}
+   
+      with tf.variable_scope("npred_"+name) as scope:
+         for var_class in self.var_classes:
+            self.dims[i] = all_var_dims[var_class]
+            shape = [None] + self.dims[i]
+            self.x[i] = tf.placeholder(tf.float32, shape=shape)
+            i+=1        
+
+      i = 0
+      for var_class in self.var_classes:
+         if var_class[0]=="u":
+            self.losses[i],self.ops[i],self.y[i] = self.upart(i)
+            i+=1
+
+      vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,"npred_"+name)
+      self.saver = tf.train.Saver(vars)
+      self.ckpt_name = self.name+"_vars.ckpt"
+
+   def truth(self):
+      """
+      Infer truth value from inputs
+      """
+      for i in range(len(self.var_classes)):
+         with tf.variable_scope("i"):
+            if len(self.dims[i])==3:
+               fc=self.cnn(i)
+            elif len(self.dims(i))==1:
+               fc=self.nn(i)
+            else:
+               raise ValueError("Dimension has not been supported yet!")
+            if fc_all is None:
+               fc_all = fc
+            else:
+               fc_all = tf.concat([fc_all,fc],axis=1)
+      truth_val = tf.layers.dense(fc_all,[None,1],activation="sigmoid")
+      return truth_val
+
+   def cnn(self,i):
+      """
+      CNN forward (same as chizson gan_predicate
+      need to separate it to make it more composibility
+      """
+      cv1 = tf.layers.conv2d(tf.reshape(self.x[i],[-1,self.dims[i][0],self.dims[i][1],self.dims[i][2]]),6,5,activation=tf.nn.relu)
+      mp1 = tf.layers.max_pooling2d(cv1,2,2)
+        
+      cv2 = tf.layers.conv2d(mp1,16,5,activation=tf.nn.relu)
+      mp2 = tf.layers.max_pooling2d(cv2,2,2)
+        
+      fc1 = tf.contrib.layers.flatten(mp2)
+      fc1 = tf.layers.dense(fc1,120,activation=tf.nn.relu)
+        
+      fc2 = tf.layers.dense(fc1,84,activation=tf.nn.relu)
+        
+      return fc2
+   
+   def nn(self,i):
+      """
+      NN forward (same as chizson gan_predicate
+      need to separate it to make it more composibility
+      """
+      fc1 = tf.layers.dense(self.x[i],128,activation=tf.nn.relu)       
+      fc2 = tf.layers.dense(fc1,64,activation=tf.nn.relu)
+        
+      return fc2
+        
+class NTNPred(NeuralProbPred):
+   
+   def __init__(self,var_classes,all_var_dims,name="ntn_pred"):
+      print("TODO")
+
+   
+      
