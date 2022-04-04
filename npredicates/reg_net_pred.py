@@ -4,98 +4,151 @@ Neural Net Probabilistic/Regression Predicate
 """
 import numpy as np
 from chizson.npredicates.neural_predicate import NeuralPred
+from utkg.utils.negsampl import *
+
+import tensorflow.compat.v1 as tf
+
+FLAGS = tf.flags.FLAGS
+
+                      
+def minibatch(data,bsize):
+    """
+    extract a minibatch of facts and create positive and negative sample
+    """
+    inds = np.random.randint(data.shape[0],size=bsize)
+    mb_x_pos = data[inds,:]
+    mb_x_neg = negative_sampling(inds,data)
+
+    mb_y_pos = np.ones((mb_x_pos.shape[0]))
+    mb_y_neg = np.zeros((mb_x_neg.shape[0]))
+    
+    mb_x = np.append(mb_x_pos,mb_x_neg,axis=0)
+    mb_y = np.append(mb_y_pos,mb_y_neg,axis=0)
+    
+    return mb_x,mb_y
 
 class NeuralRegPred(NeuralPred):
-   """
-   Neural probabilistic/regression as a predicate. A neural net N present the truth value as a probablistic/regression function.
-   """
-   def __init__(self,var_classes,all_var_dims,name="neural_prob_pred"):
-      self.var_classes  = var_classes
-      self.all_var_dims = all_var_dims
-      self.mb_size      = FLAGS.bsize
-      self.name = name
+    """
+    Neural probabilistic/regression as a predicate. A neural net N present the truth value as a probablistic/regression function.
+    """
+    def __init__(self,kb,embedders=None,name="neural_prob_pred"):
+        if name not in kb.predicates:
+            raise ValueError("Predicate name does not exist!")
         
-      if FLAGS.optimizer=="adam":
-         self.optimizer = tf.train.AdamOptimizer
-      elif FLAGS.optimizer=="rmsprop":
-         self.optimizer = tf.train.RMSPropOptimizer
+        self.var_classes  = kb.predicates[name]["var_classes"]
+        self.var_dims = kb.db.var_dims
+        self.pred_inx = (list(kb.predicates.keys())).index(name) 
+        self.embedders    = embedders
+        self.mb_size      = FLAGS.bsize
+        self.name = name
 
-      i = 0    
-      self.x = {}
-      self.y = {}
-      self.z = {}
-      self.losses = {}
-      self.ops = {}
-      self.dims= {}
-   
-      with tf.variable_scope("npred_"+name) as scope:
-         for var_class in self.var_classes:
-            self.dims[i] = all_var_dims[var_class]
-            shape = [None] + self.dims[i]
-            self.x[i] = tf.placeholder(tf.float32, shape=shape)
-            i+=1        
+        # set up place holders
+        self.place_holders()
 
-      i = 0
-      for var_class in self.var_classes:
-         if var_class[0]=="u":
-            self.losses[i],self.ops[i],self.y[i] = self.upart(i)
-            i+=1
-
-      vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,"npred_"+name)
-      self.saver = tf.train.Saver(vars)
-      self.ckpt_name = self.name+"_vars.ckpt"
-
-   def truth(self):
-      """
-      Infer truth value from inputs
-      """
-      for i in range(len(self.var_classes)):
-         with tf.variable_scope("i"):
-            if len(self.dims[i])==3:
-               fc=self.cnn(i)
-            elif len(self.dims(i))==1:
-               fc=self.nn(i)
+        # Embedding
+        self.embs = self.embedding()
+        # link to truth value
+        self.truth = self.nn()
+        
+    def place_holders(self):
+        self.x = {}
+        for i in range(len(self.var_classes)):
+            var_class =self.var_classes[i]
+            shape = [None] + self.var_dims[var_class]
+            if var_class[0]=="u" or var_class[0]=="t":
+                self.x[i] = tf.placeholder(tf.int32, shape=(None,1))
             else:
-               raise ValueError("Dimension has not been supported yet!")
+                self.x[i] = tf.placeholder(tf.float32, shape=shape)
+
+
+    def embedding(self):
+        print("neural pred " + self.name)
+        embs = {}
+        for var_name in self.var_classes:
+            if self.embedders is not None and self.embedders[var_name] is not None:
+                if var_name[0] == "t":
+                    temb = self.embedders[var_name].embed(self.x[var_name])
+                    pemb = self.embedders["predicate"].embed([self.pred_inx])
+                    fc = tf.tensordot(temb,pemb,axes=0) # CHECK IF THAT DOES OUTER PRODUCT PROPERLY
+                    fc = tf.layers.flatten(fc)
+                else:
+                    fc = self.embedders[var_name].embed(self.x[var_name])
+            else:
+                fc = self.x[var_name]
+
+            embs[var_name] = tf.cast(fc,tf.float32)
+        return embs
+    
+    def nn(self):
+        """
+        Infer truth value from inputs
+        """
+        fc_all = None
+        for var_name in self.embs:
+            print(var_name)
+            fc = self.embs[var_name]
+            print(fc.get_shape())
             if fc_all is None:
-               fc_all = fc
+                fc_all = fc
             else:
-               fc_all = tf.concat([fc_all,fc],axis=1)
-      truth_val = tf.layers.dense(fc_all,[None,1],activation="sigmoid")
-      return truth_val
+                fc_all = tf.concat([fc_all,fc],axis=1)
 
-   def cnn(self,i):
-      """
-      CNN forward (same as chizson gan_predicate
-      need to separate it to make it more composibility
-      """
-      cv1 = tf.layers.conv2d(tf.reshape(self.x[i],[-1,self.dims[i][0],self.dims[i][1],self.dims[i][2]]),6,5,activation=tf.nn.relu)
-      mp1 = tf.layers.max_pooling2d(cv1,2,2)
+        scope = "npred_"+self.name
+        with tf.variable_scope(scope) as sv:
+            truth_val = tf.layers.dense(fc_all,1,activation="sigmoid")
+            
+            # checkpoint save model
+            vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,scope=scope)
+            self.saver = tf.train.Saver(vars)
+            self.ckpt_name = self.name+"_vars.ckpt"
+
+        return truth_val
+
+    def train(self,session,data):
+        if FLAGS.optimizer=="adam":
+            self.optimizer = tf.train.AdamOptimizer
+        elif FLAGS.optimizer=="rmsprop":
+            self.optimizer = tf.train.RMSPropOptimizer
+
+        # truth label
+        self.y = tf.placeholder(tf.float32,shape=(None,1))
+        # loss & optimization
+        self.loss = tf.reduce_mean(tf.losses.mean_squared_error(self.y,self.truth))
+
+        self.op = self.optimizer(learning_rate=FLAGS.lr).minimize(self.loss)
+
         
-      cv2 = tf.layers.conv2d(mp1,16,5,activation=tf.nn.relu)
-      mp2 = tf.layers.max_pooling2d(cv2,2,2)
-        
-      fc1 = tf.contrib.layers.flatten(mp2)
-      fc1 = tf.layers.dense(fc1,120,activation=tf.nn.relu)
-        
-      fc2 = tf.layers.dense(fc1,84,activation=tf.nn.relu)
-        
-      return fc2
-   
-   def nn(self,i):
-      """
-      NN forward (same as chizson gan_predicate
-      need to separate it to make it more composibility
-      """
-      fc1 = tf.layers.dense(self.x[i],128,activation=tf.nn.relu)       
-      fc2 = tf.layers.dense(fc1,64,activation=tf.nn.relu)
-        
-      return fc2
-        
-class NTNPred(NeuralProbPred):
-   
-   def __init__(self,var_classes,all_var_dims,name="ntn_pred"):
-      print("TODO")
+        iter = 0
+        while True:
+            iter+=1
+            mb_x,mb_y = minibatch(data,bsize=FLAGS.bsize)
+            print(mb_x.shape)
+            print(mb_y.shape)
+            input("")
+            dict = {}
+            for var_name in self.var_classes: # checking
+                dict[self.x[var_name]] = mb_x[var_name]
+                
+            dict[self.y] = mb_y
+
+            _,loss = session.run([self.op,self.loss],dict)
+            print("[iter %d] loss=%f"%(iter,loss))
+
+            if iter>=100000:
+                break
+         
+    def save(self,session,fpath):
+        self.saver.save(session,os.path.join(fpath,self.ckpt_name))
+
+    def load(self,session,fpath):
+        self.saver.store(session,os.path.join(fpath,self.ckpt_name))
+                     
+class NTNPred(NeuralRegPred):
+    def __init__(self,var_classes,all_var_dims,name="ntn_pred"):
+        print("TODO")
+
+    def save(self,session,fpath):
+        print("TODO")
 
    
       

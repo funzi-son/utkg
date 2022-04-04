@@ -1,0 +1,36 @@
+"""
+Time embedding
+@Son N. Tran
+"""
+import numpy as np
+import tensorflow.compat.v1 as tf
+
+def year_embedding(x,n_hidden=100):
+    """
+    embedding year
+    xyzt
+    """
+    t1000 = tf.slice(x,[0,0],[-1,0])
+    t100  = tf.slice(x,[0,1],[-1,1])
+    t10   = tf.slice(x,[0,2],[-1,2])
+    t1    = tf.slice(x,[0,3],[-1,3])
+
+    # convert to one-hot vectors
+    mtx = tf.eyes(10)
+    t1000 = tf.nn.embedding_lookup(mtx,t1000)
+    t100  = tf.nn.embedding_lookup(mtx,t100)
+    t10   = tf.nn.embedding_lookup(mtx,t10)
+    t1    = tf.nn.embedding_lookup(mtx,t1)
+
+    x = tf.stack([t1000,t100,t10,t1])
+
+    print("Checking time embedding ...")
+    print(x.get_shape())
+    
+    # feed to an 1-layer LSTM with n_hidden units.
+    rnn_cell = tf.rnn.BasicLSTMCell(n_hidden)
+
+    # generate inference
+    outputs, _ = rnn.static_rnn(rnn_cell, x, dtype=tf.float32)
+    
+    return outputs[-1]
