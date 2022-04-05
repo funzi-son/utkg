@@ -7,6 +7,9 @@ import tensorflow.compat.v1 as tf
 
 FLAGS = tf.flags.FLAGS
 class Before():
+    """
+    Just apply to years now
+    """
     def __init__(self,kb,name="func_pred"):
         if name not in kb.predicates:
             raise ValueError("Predicate name does not exist!")
@@ -29,8 +32,10 @@ class Before():
         for i in range(len(self.var_classes)):
             var_class = self.var_classes[i]
             shape = [None] + self.var_dims[var_class]
-            if var_class[0]=="u" or var_class[0]=="t":
+            if var_class[0]=="u":
                 self.x[i] = tf.placeholder(tf.int32, shape=(None,1))
+            elif var_class[0]=="t":
+                self.x[i] = tf.placeholder(tf.int32, shape=(None,4))
             else:
                raise ValueError("Variable must be comparable!!!")
                
@@ -38,8 +43,13 @@ class Before():
         """
         Infer truth value from inputs
         """
-        print(self.var_classes)
-        truth = tf.less(self.x[0],self.x[1])
+        #print("func predicate-===================")
+        #print(self.var_classes)
+        x0 = tf.reduce_sum(self.x[0]*[1000,100,10,1],axis=1)
+        x1 = tf.reduce_sum(self.x[1]*[1000,100,10,1],axis=1)
+        #print(x0.get_shape())
+        #print(x1.get_shape())
+        truth = tf.less(x0,x1)
         
         return tf.cast(truth,tf.float32)
 

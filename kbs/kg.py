@@ -87,7 +87,6 @@ class GraphDB(object):
                 self.kb.classes[var_type].append(s)
             if self.indexing:
                 sinx = self.kb.classes[var_type].index(s)
-
             
             # update classes (object if applicable)
             var_type = self.kb.predicates[rel]["var_classes"][1]

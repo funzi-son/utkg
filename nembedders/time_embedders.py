@@ -23,7 +23,13 @@ class YearEmb():
             t100  = tf.slice(x,[0,1],[-1,1])
             t10   = tf.slice(x,[0,2],[-1,1])
             t1    = tf.slice(x,[0,3],[-1,1])
-        
+
+            print("year embedding ====================")
+            print(t1000.get_shape())
+            print(t100.get_shape())
+            print(t10.get_shape())
+            print(t1.get_shape())
+            input("")
             # convert to one-hot vectors
             mtx = tf.eye(10)
 

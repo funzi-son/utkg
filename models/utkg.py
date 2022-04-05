@@ -263,11 +263,11 @@ class UTKG(object):
                                  t100,vals = np.divmod(vals,100)
                                  t10,t1  = np.divmod(vals,10)
                                  vals = np.concatenate((t1000,t100,t10,t1),axis=1)
-                                 print(vals.shape)
+                                 #print(vals.shape)
                                                 
                             rdict[self.npreds[pred_name].x[i]]  = vals
-                            print(vals)
-                            input("")
+                            #print(vals)
+                            #input("")
                     print(rdict)
                     input("")
                     _, loss1 = session.run([self.rop,self.rloss],rdict)
@@ -275,7 +275,9 @@ class UTKG(object):
             # Update predicates from facts
             loss2 = 0        
             for pred_name in self.npreds:
-                pred_loss = self.npreds[pred_name].update(session,pred_name)
+                pred_loss = self.npreds[pred_name].update(session,kb.db.facts[pred_name])
                 loss2+=pred_loss
-                    # Plot learning
+
+            # Plot learning
+            print("[UTKG] iter %d loss1=%.5f loss2=%.5f",iter,loss1,loss2)
                     
