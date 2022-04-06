@@ -16,6 +16,8 @@ from utkg.utils.fuzzy_norms import *
 import tensorflow.compat.v1 as tf
 FLAGS = tf.flags.FLAGS
 
+tf.reset_default_graph()
+
 """ TODO
 def sample_with_shared_vars(kb,p1name,p2name,p1shared,p2shared):
     if p1name in kb.db.facts:
@@ -238,6 +240,8 @@ class UTKG(object):
         print("[UTKG] Start training ...")
         iter = 0
         while True:
+            loss1=0
+            """
             for rname in self.kb.rules:
                 formulas =  self.kb.rules[rname]
                 
@@ -271,13 +275,14 @@ class UTKG(object):
                     print(rdict)
                     input("")
                     _, loss1 = session.run([self.rop,self.rloss],rdict)
-                    
+            """     
             # Update predicates from facts
-            loss2 = 0        
+            loss2 = 0
+            
             for pred_name in self.npreds:
-                pred_loss = self.npreds[pred_name].update(session,kb.db.facts[pred_name])
+                pred_loss = self.npreds[pred_name].update(session,self.kb.db.facts[pred_name])
                 loss2+=pred_loss
-
+            
             # Plot learning
-            print("[UTKG] iter %d loss1=%.5f loss2=%.5f",iter,loss1,loss2)
+            print("[UTKG] iter %d loss1=%.5f loss2=%.5f",(iter,loss1,loss2))
                     
