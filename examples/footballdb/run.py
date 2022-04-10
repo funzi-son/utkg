@@ -27,13 +27,16 @@ flags.DEFINE_string("optimizer","adam","training alg")
 
 if __name__=="__main__":
     with  tf.Graph().as_default():
-        kb = GraphKB("../../../../data/footballdb/")
+        kb = GraphKB("../../data/footballdb/")
         dataset = GraphDB(kb)
         model = UTKG(kb)
-        
+
+        for o in kb.objects:
+            print(o)
+            input("")
         print("[UTKG] Complete constructing models. Start trainning ...")
 
-        
+        """
         session = tf.Session()
         session.run(tf.global_variables_initializer())
         # Train neural predicate "wasBornOn" # make it to CNLP in the next version
@@ -42,3 +45,4 @@ if __name__=="__main__":
         #model.train_npred("playFor",dataset) 
         # Run the model
         model.train(session)
+        """

@@ -7,7 +7,7 @@ import numpy as np
 from datetime import datetime
 import time
 
-from chizson.kbs.firstorder import KB
+from utkg.kbs.firstorder import KB
 
 class GraphDB(object):
     def __init__(self,kb,partition="train",indexing=True):

@@ -3,11 +3,11 @@ Neural-symbolic Uncertain Temporal Knowledge Graph
 @SNT
 """
 
-from chizson.npredicates.truth_neural_predicates import TruthNNPred
-from chizson.nembedders.var_embedders import VarEmb
-from chizson.nembedders.time_embedders import YearEmb
-from chizson.nembedders.pred_embedders import PredEmb
-from chizson.sampling.negsampl import *
+from utkg.npredicates.truth_neural_predicates import TruthNNPred
+from utkg.nembedders.var_embedders import VarEmb
+from utkg.nembedders.time_embedders import YearEmb
+from utkg.nembedders.pred_embedders import PredEmb
+from utkg.sampling.negsampl import *
 
 from utkg.fpredicates.funcs import *
 from utkg.utils.fuzzy_norms import *
@@ -80,7 +80,7 @@ def minibatch_rule(f,kb):
         var_assignment[v]  = neg_candidates[:,i]
         mb[name][i] = var_assignment[v][np.newaxis,:]
         
-    print(var_assignment)
+    #print(var_assignment)
     # 2. sample other assignments for other variables in the formula
     for i in range(len(f)-1): 
         p = f["l"+str(i)]
@@ -92,7 +92,7 @@ def minibatch_rule(f,kb):
         unassigned = {}
         for j in range(len(p[1])):
             var = p[1][j]
-            print(p[1])
+            #print(p[1])
             if var in var_assignment:
                 cll.append(var_assignment[var][0])
                 assigned_inds.append(j)
@@ -115,8 +115,7 @@ def minibatch_rule(f,kb):
         for j in range(len(p[1])):
             var = p[1][j]
             mb[pname][j] = var_assignment[var][np.newaxis,:]
-        print(mb[pname])
-    input("")
+        
     return mb
 
 def extract(lit):
@@ -149,7 +148,9 @@ class UTKG(object):
 
         # define neural predicates
         self.build_model()
-    
+
+        # saver
+        self.saver = tf.train.Saver()
         
     def build_model(self):
         # Step 1: construct neural predicate
@@ -157,7 +158,7 @@ class UTKG(object):
 
         # Step 2: plausibility score
         self.plausibility_scores()
-        input("Completed building model")
+        print("[UTKG] Completed building model")
 
         # Step 3: plausibility loss and ops
         self.plausibility_ops()
@@ -174,8 +175,8 @@ class UTKG(object):
                 clause = [] # conjunctive clause
                 for e in f:
                     sign,pname = extract(f[e][0])
-                    print(sign)
-                    print(pname)
+                    #print(sign)
+                    #print(pname)
                     if e =="head":
                         p = literal(sign,self.npreds[pname].truth)
                     else:
@@ -203,12 +204,7 @@ class UTKG(object):
         print("[UTKG] Neural Predicates built")
         # construct formulas
                     
-        
-    def infer(self,session,bquery):
-        # find formulas
-        print(bquery)
-
-                
+                        
     def train_npred(self,pred_name,session):
         """
         Pre-train each neural predicate from facts 
@@ -241,23 +237,23 @@ class UTKG(object):
         iter = 0
         while True:
             loss1=0
-            """
+        
             for rname in self.kb.rules:
                 formulas =  self.kb.rules[rname]
                 
                 for f in formulas:                    
                     # Update rule constrants
-                    print("Get a minibatch from rule")
+                    # print("Get a minibatch from rule")
                     mb = minibatch_rule(f,self.kb)
-                    print(mb)
+                    #print(mb)
                     rdict = {}
                     for lname  in f:
                         p = f[lname]
                         sign,pred_name = extract(p[0])
-                        print(pred_name)
-                        print(p[1])
+                        #print(pred_name)
+                        #print(p[1])
                         for i in range(len(p[1])):
-                            print("****")
+                            #print("****")
                             #print(self.npreds[pred_name].x[i].get_shape())
                             #print(mb[pred_name][i].shape)
                             var_class = self.kb.predicates[pred_name]["var_classes"][i][0]
@@ -272,17 +268,56 @@ class UTKG(object):
                             rdict[self.npreds[pred_name].x[i]]  = vals
                             #print(vals)
                             #input("")
-                    print(rdict)
-                    input("")
+                    #print(rdict)
+                    #input("")
                     _, loss1 = session.run([self.rop,self.rloss],rdict)
-            """     
+                
             # Update predicates from facts
             loss2 = 0
             
             for pred_name in self.npreds:
-                pred_loss = self.npreds[pred_name].update(session,self.kb.db.facts[pred_name])
-                loss2+=pred_loss
+                if self.npreds[pred_name].trainable:
+                    pred_loss = self.npreds[pred_name].update(session,self.kb.db.facts[pred_name])
+                    loss2 += pred_loss
             
             # Plot learning
-            print("[UTKG] iter %d loss1=%.5f loss2=%.5f",(iter,loss1,loss2))
+            print("[UTKG] iter %d loss1=%.5f loss2=%.5f"%(iter,loss1,loss2))
                     
+            iter+=1
+            if iter % 100==0:
+                self.save(session)
+
+    def save(self,session):
+        print("[UTKG] Saving model")
+        self.saver.save(session, "./checkpoint/utkg.ckpt")
+
+    def load(self,session,fpath):
+        self.saver.restore(session, fpath)
+        print("[UTKG] Model has been loaded successfully")
+
+    def evaluate(self,session):
+        for pred_name in self.npreds:
+            facts = self.kb.db.facts[pred_name]
+            out = self.infer(session,facts)
+
+    def infer(self,session,bquery):
+        rname = bquery["name"]
+        # rearrange
+        
+        npred = self.npreds[rname]
+        nvars = len(npred.var_classes)
+        x = None
+        for i in range(nvars):
+            var_class = npred.var_classes[i]
+            if x is None:
+                x = np.array([bquery[var_class]])
+            else:
+                x  = np.append(x,[bquery[var_class]])
+        x = np.transpose(x)
+            
+        out = npred.infer(session,x)
+
+        return out
+
+        
+    

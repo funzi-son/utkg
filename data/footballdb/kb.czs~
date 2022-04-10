@@ -1,0 +1,2 @@
+pred: playFor(uhuman,uteam,ty)
+pred: wasBornOn(uhuman,ty-m-d)

@@ -1,0 +1,3 @@
+pred: playFor(uhuman,uteam,tY)
+pred: wasBornOn(uhuman,tY-m-d)
+NOT playFor(X,Y,T2):- wasBornOn(X,T1) , before(T2,T1)

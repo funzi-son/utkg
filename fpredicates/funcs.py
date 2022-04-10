@@ -24,6 +24,9 @@ class Before():
 
         # link to truth value
         self.truth = self.func()
+
+        # trainable
+        self.trainable=False
         
     def place_holders(self):
         self.x = {}
@@ -64,3 +67,6 @@ class Before():
         else:
             # sample a value before cll[0]
             return cll[0]-np.random.randint(10,size=1)+1
+        
+    def truth_range(self,mu,years):
+        return [y<mu for y in years]
