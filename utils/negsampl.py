@@ -71,6 +71,7 @@ def negative_sampling(inds,data,var_inx,nneg_per_sample=1):
 """
 
 def negative_sampling(inds,data):
+    input("2")
     neg_samples = np.empty((0,data.shape[1]))
     for i in inds:
         for var_inx in range(data.shape[1]):

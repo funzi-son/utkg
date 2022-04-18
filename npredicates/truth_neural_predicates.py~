@@ -179,7 +179,7 @@ class TruthNNPred(NeuralPred):
 
         return loss
 
-    def get_truth(self,session,query):
+    def infer(self,session,query):
         dict = {}
         for i in range(len(self.var_classes)):
             var_class =self.var_classes[i]

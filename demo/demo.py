@@ -22,9 +22,9 @@ FLAGS = flags.FLAGS
 
 # Modelling params                                                                                                             
 flags.DEFINE_integer("thid_num",10,"number of hidden unit in time embedding")
-flags.DEFINE_integer("phid_num",10,"number of hidden unit in predicate embedding")
-flags.DEFINE_integer("vhid_num",10,"number of hidden unit in predicate embedding")
-
+flags.DEFINE_integer("phid_num",50,"number of hidden unit in predicate embedding")
+flags.DEFINE_integer("vhid_num",50,"number of hidden unit in predicate embedding")
+flags.DEFINE_integer("npred_hid",50,"number of hidden unit neural predicate")
 
 
 # Learning params                                                                                                              
@@ -100,25 +100,32 @@ click = st.button("Verify", key=None, help=None, on_click=None, args=None, kwarg
 if click:
     st.write("Certainty of query")
 
+    print(len(model.kb.classes["uhuman"]))
+    print(len(model.kb.classes["uteam"]))
+    print(len(model.kb.objects.keys()))
     
     vid = list(model.kb.objects.values()).index(selected_subject)
     sid = list(model.kb.objects.keys())[vid]
+    sid = model.kb.classes["uhuman"].index(sid)
+    
 
     vid = list(model.kb.objects.values()).index(selected_object)
     oid = list(model.kb.objects.keys())[vid]
-   
+    oid = model.kb.classes["uteam"].index(oid)
+        
     query = {"name":"playFor",
              "uhuman":sid,
              "uteam":oid,
              "tY":int(selected_year)}
+
     
-    confidence = model.infer(session,query)
+    confidence = 1-model.infer(session,query)
     
     st.write(str(confidence) + ": NOT playsFor("+selected_subject+","+selected_object+","+selected_year+")")
 
     #### Explainability
     wbo    = model.npreds["wasBornOn"]
-    n = wbo.get_truth(session,np.array([[sid,int(i)] for i in yr_list])) 
+    n = wbo.infer(session,np.array([[sid,int(i)] for i in yr_list])) 
     x = [int(i) for i in yr_list]
     
     fig, ax = plt.subplots(figsize=(5,4))

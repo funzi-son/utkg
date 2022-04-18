@@ -2,6 +2,8 @@
 Neural-symbolic Uncertain Temporal Knowledge Graph
 @SNT
 """
+import os
+import numpy as np
 
 from utkg.npredicates.truth_neural_predicates import TruthNNPred
 from utkg.nembedders.var_embedders import VarEmb
@@ -151,6 +153,10 @@ class UTKG(object):
 
         # saver
         self.saver = tf.train.Saver()
+
+        # for loging
+        self.log_file= None
+        self.log_entry_count = 0
         
     def build_model(self):
         # Step 1: construct neural predicate
@@ -228,6 +234,28 @@ class UTKG(object):
                 c+=1
         self.rloss = self.rloss/c
         self.rop   = self.optimizer(learning_rate=FLAGS.lr).minimize(self.rloss)
+
+    def log(self,log_data):
+        if not os.path.isdir("./log"):
+            os.makedirs("./log")
+
+        if self.log_file is None or self.log_entry_count==1000:
+            if self.log_file is None:
+                self.log_count = 1
+            else:
+                self.log_file.flush()
+                self.log_file.close()
+                self.log_count+=1
+                
+            self.log_entry_count=0
+            
+            fname = "./log/log_" +str(self.log_count)+".csv" 
+            self.log_file = open(fname,"w+")
+
+        #print(log_data)
+        np.savetxt(self.log_file, log_data)
+        self.log_entry_count +=log_data.shape[0]
+        
         
     def train(self,session):
         """
@@ -237,7 +265,7 @@ class UTKG(object):
         iter = 0
         while True:
             loss1=0
-        
+            
             for rname in self.kb.rules:
                 formulas =  self.kb.rules[rname]
                 
@@ -271,7 +299,7 @@ class UTKG(object):
                     #print(rdict)
                     #input("")
                     _, loss1 = session.run([self.rop,self.rloss],rdict)
-                
+            
             # Update predicates from facts
             loss2 = 0
             
@@ -279,13 +307,29 @@ class UTKG(object):
                 if self.npreds[pred_name].trainable:
                     pred_loss = self.npreds[pred_name].update(session,self.kb.db.facts[pred_name])
                     loss2 += pred_loss
+                                
+
+            # evaluation
+            confidences = self.evaluate(session)
+            res = [iter,loss1,loss2]
+            message = ""
+            for pname in confidences:
+                cf = confidences[pname]
+                res.append(cf)
+                message += pname + " : %.5f "%(cf)
+
+            # display the learning process
             
-            # Plot learning
-            print("[UTKG] iter %d loss1=%.5f loss2=%.5f"%(iter,loss1,loss2))
-                    
+            print("[UTKG] iter %d loss1=%.5f loss2=%.5f "%(iter,loss1,loss2) + message)
+
+            # log training progress
+            self.log(np.array([res]))
+                
+            # save checkpoint
             iter+=1
             if iter % 100==0:
                 self.save(session)
+                
 
     def save(self,session):
         print("[UTKG] Saving model")
@@ -296,11 +340,24 @@ class UTKG(object):
         print("[UTKG] Model has been loaded successfully")
 
     def evaluate(self,session):
+        confidences = {}
         for pred_name in self.npreds:
-            facts = self.kb.db.facts[pred_name]
-            out = self.infer(session,facts)
-
+            print(pred_name)
+            if not self.npreds[pred_name].trainable:
+                continue
+            
+            facts = self.kb.db.facts[pred_name]            
+            out = self.npreds[pred_name].infer(session,facts)
+            #print((min(out),max(out)))
+            confidences[pred_name] = np.mean(out)
+        return confidences
+    
     def infer(self,session,bquery):
+        """
+        NOTE: next version, use tuple for the query, 
+        dict will not be useful when there are more than one
+        variable of the same types
+        """
         rname = bquery["name"]
         # rearrange
         
@@ -309,12 +366,15 @@ class UTKG(object):
         x = None
         for i in range(nvars):
             var_class = npred.var_classes[i]
-            if x is None:
-                x = np.array([bquery[var_class]])
-            else:
-                x  = np.append(x,[bquery[var_class]])
-        x = np.transpose(x)
+            val = bquery[var_class]
             
+            if x is None:
+                x = np.array([val])
+            else:
+                x  = np.append(x,val)
+                
+        x = np.array([x])
+        
         out = npred.infer(session,x)
 
         return out

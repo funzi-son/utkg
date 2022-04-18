@@ -83,9 +83,6 @@ def negative_sampling(inds,data):
             pos_tuple   = data[i,:]
             neg_tuples  = negative_tuple_sampling(data,pos_tuple,var_inx,FLAGS.nneg_per_var)
             neg_samples = np.append(neg_tuples,neg_samples,axis=0)
-
-    #print(neg_samples)
-    #print(neg_samples.shape)
-    #input("")
-    return neg_samples
+    inds = np.random.randint(neg_samples.shape[0],size=2)
+    return neg_samples[inds,:]
                           

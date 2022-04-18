@@ -62,7 +62,7 @@ class TruthNNPred(NeuralPred):
         # loss & optimization
         self.loss = tf.reduce_mean(tf.losses.mean_squared_error(self.y,self.truth))
         with tf.variable_scope("npred_op", reuse=tf.AUTO_REUSE) as vs:
-            self.op = tf.train.RMSPropOptimizer(learning_rate=FLAGS.lr).minimize(self.loss)
+            self.op = tf.train.AdamOptimizer(learning_rate=FLAGS.lr).minimize(self.loss)
 
     def place_holders(self):
         self.x = {}
@@ -112,6 +112,7 @@ class TruthNNPred(NeuralPred):
 
         scope = "npred_"+self.name
         with tf.variable_scope(scope) as sv:
+            h1  = tf.layers.dense(fc_all,FLAGS.npred_hid,activation="relu")
             truth_val = tf.layers.dense(fc_all,1,activation="sigmoid")
             
             # checkpoint save model
@@ -147,19 +148,15 @@ class TruthNNPred(NeuralPred):
                 break
 
     def update(self,session,data):
-        print("Update neural predicates %s"%(self.name))
-        
+        #print("Update neural predicates %s"%(self.name))
         
         mb_x,mb_y = minibatch(data,bsize=FLAGS.bsize)
-        #print(mb_x.shape)
-        #print(mb_y.shape)
+        #print(mb_x)
+        #print(mb_y)
         #input("")
         dict = {}
         for i in range(len(self.var_classes)):
             var_class =self.var_classes[i]
-            # NOTE: change var_class to index in next version
-            # to avoid the problem of two variables from the same class
-            # in a predicate
             vals = mb_x[:,i][:,np.newaxis] 
             if var_class[0]=="t":# year format                                                                    
                 t1000,vals  = np.divmod(vals,1000)
@@ -183,9 +180,6 @@ class TruthNNPred(NeuralPred):
         dict = {}
         for i in range(len(self.var_classes)):
             var_class =self.var_classes[i]
-            # NOTE: change var_class to index in next version
-            # to avoid the problem of two variables from the same class
-            # in a predicate
             vals = query[:,i][:,np.newaxis] 
             if var_class[0]=="t":# year format                                                                    
                 t1000,vals  = np.divmod(vals,1000)
