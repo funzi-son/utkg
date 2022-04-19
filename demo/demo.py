@@ -92,7 +92,7 @@ selected_object = name_cols[2].selectbox('object', ob_list)
 #selected_year = st.multiselect('Object', yr_list)
 selected_year = name_cols[3].selectbox('time', yr_list)
 
-st.write('IF wasBornOn(X,T1) AND before(T2,T1) THEN NOT playsFor(X,Y,T2)')
+st.write('IF wasBornIn(X,T1) AND before(T2,T1) THEN NOT playsFor(X,Y,T2)')
 
 click = st.button("Verify", key=None, help=None, on_click=None, args=None, kwargs=None)
 
@@ -129,11 +129,11 @@ if click:
     x = [int(i) for i in yr_list]
     
     fig, ax = plt.subplots(figsize=(5,4))
-    ax.plot(x, n,label="wasBornOn("+selected_object+",T1)",color="r")
+    ax.plot(x, n,label="wasBornIn("+selected_object+",T1)",color="r")
     #ax.plot([1993,1993],[0,max(n)],"--")
     #ax.text(0.65, 0.01, '1993-01-08', horizontalalignment='center',verticalalignment='center', transform=ax.transAxes)
     ax.set_xlabel("Year")
-    ax.set_ylabel("wasBornOn")
+    ax.set_ylabel("wasBornIn")
     #ax.legend()
 
 

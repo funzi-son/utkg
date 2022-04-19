@@ -1,2 +1,0 @@
-model_checkpoint_path: "utkg.ckpt"
-all_model_checkpoint_paths: "utkg.ckpt"

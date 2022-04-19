@@ -30,6 +30,9 @@ if __name__=="__main__":
     with  tf.Graph().as_default():
         kb = GraphKB("../../data/footballdb/")
         dataset = GraphDB(kb)
+        print(len(kb.classes["uhuman"]))
+        print(len(kb.classes["uteam"]))
+        """
         model = UTKG(kb)
 
         print("[UTKG] Complete constructing models. Start trainning ...")
@@ -43,4 +46,4 @@ if __name__=="__main__":
         #model.train_npred("playFor",dataset) 
         # Run the model
         model.train(session)
-        
+        """
