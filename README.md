@@ -1,8 +1,8 @@
 # utkg
 Uncertain Temporal Knowledge Graph Reasoning
 ## Dependencies
-•  Python 3.8+
-• Numpy 1.22+
+- • Python 3.8+
+- • Numpy 1.22+
 • Tensorflow 1.5+ (tensorflow.compat.v1 in Tensorflow 2.8)
 • networkx==2.5.1
 • numpy==1.21.1
